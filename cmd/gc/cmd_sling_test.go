@@ -345,6 +345,7 @@ func init() {
 		"my-formula", "convoy-formula",
 	} {
 		content := fmt.Sprintf("formula = %q\nversion = 1\n\n[[steps]]\nid = \"work\"\ntitle = \"Work\"\n", name)
+		_ = os.WriteFile(filepath.Join(dir, name+".toml"), []byte(content), 0o644)
 		_ = os.WriteFile(filepath.Join(dir, name+".formula.toml"), []byte(content), 0o644)
 	}
 	sharedTestFormulaDir = dir
@@ -3488,7 +3489,7 @@ func TestOnRootOnlyFormulaKeepsAttachedWispPrivate(t *testing.T) {
 	runner := newFakeRunner()
 	sp := runtime.NewFake()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "root-only.formula.toml"), []byte(`
+	if err := os.WriteFile(filepath.Join(dir, "root-only.toml"), []byte(`
 formula = "root-only"
 description = "Private attached root"
 version = 1
@@ -3548,7 +3549,7 @@ func TestFormulaRootOnlyRoutesRunnableWispRoot(t *testing.T) {
 	runner := newFakeRunner()
 	sp := runtime.NewFake()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "root-only.formula.toml"), []byte(`
+	if err := os.WriteFile(filepath.Join(dir, "root-only.toml"), []byte(`
 formula = "root-only"
 description = "Standalone root"
 version = 1
@@ -3686,7 +3687,7 @@ contract = "graph.v2"
 id = "step"
 title = "Do work"
 `
-	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.formula.toml"), []byte(graphFormula), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.toml"), []byte(graphFormula), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -3807,7 +3808,7 @@ contract = "graph.v2"
 id = "step"
 title = "Do work"
 `
-	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.formula.toml"), []byte(graphFormula), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.toml"), []byte(graphFormula), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -3865,7 +3866,7 @@ contract = "graph.v2"
 id = "step"
 title = "Do work"
 `
-	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.formula.toml"), []byte(graphFormula), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.toml"), []byte(graphFormula), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -3926,7 +3927,7 @@ contract = "graph.v2"
 id = "step"
 title = "Do work"
 `
-	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.formula.toml"), []byte(graphFormula), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.toml"), []byte(graphFormula), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -4197,7 +4198,7 @@ contract = "graph.v2"
 id = "step"
 title = "Do work"
 `
-	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.formula.toml"), []byte(graphFormula), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(cfg.FormulaLayers.City[0], "graph-work.toml"), []byte(graphFormula), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -4418,7 +4419,7 @@ id = "do-work"
 title = "Do work for {{target_id}}"
 description = "Target: {{target_id}}, workspace: {{workspace}}"
 `
-	if err := os.WriteFile(filepath.Join(dir, "repro.formula.toml"), []byte(formulaBody), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "repro.toml"), []byte(formulaBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -4467,7 +4468,7 @@ id = "do-work"
 title = "Do work for {{title}}"
 description = "Target: {{target_id}}, workspace: {{workspace}}"
 `
-	if err := os.WriteFile(filepath.Join(dir, "repro-mixed-vars.formula.toml"), []byte(formulaBody), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "repro-mixed-vars.toml"), []byte(formulaBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -4539,7 +4540,7 @@ required = true
 id = "do-work"
 title = "Work in {{workspace}}"
 `
-	if err := os.WriteFile(filepath.Join(dir, "requires-workspace.formula.toml"), []byte(formulaBody), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "requires-workspace.toml"), []byte(formulaBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -4781,7 +4782,7 @@ description = "Root title"
 id = "work"
 title = "Work"
 `
-	if err := os.WriteFile(filepath.Join(dir, "root-title-placeholder.formula.toml"), []byte(formulaBody), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "root-title-placeholder.toml"), []byte(formulaBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -4872,7 +4873,7 @@ required = true
 id = "work"
 title = "Work {{issue}}"
 `
-	if err := os.WriteFile(filepath.Join(dir, "requires-issue.formula.toml"), []byte(formulaBody), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "requires-issue.toml"), []byte(formulaBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -4916,7 +4917,7 @@ required = true
 id = "work"
 title = "Work {{workspace}}"
 `
-	if err := os.WriteFile(filepath.Join(dir, "batch-requires-workspace.formula.toml"), []byte(formulaBody), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "batch-requires-workspace.toml"), []byte(formulaBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -5063,7 +5064,7 @@ id = "ship"
 title = "Ship"
 needs = ["prep"]
 `
-	if err := os.WriteFile(filepath.Join(dir, "multi-step.formula.toml"), []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "multi-step.toml"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -6557,7 +6558,7 @@ required = true
 id = "do-work"
 title = "Work in {{workspace}}"
 `
-	if err := os.WriteFile(filepath.Join(dir, "default-requires-workspace.formula.toml"), []byte(formulaBody), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "default-requires-workspace.toml"), []byte(formulaBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
