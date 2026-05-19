@@ -140,22 +140,25 @@ func (ce ConditionEnv) Environ() []string {
 
 // ResolveConditionPath resolves and validates a gate condition path.
 //
-//   - envelope: the security boundary; relative-path traversal validation
-//     enforces containment under this root. For city-scoped gates pass the
-//     city path; for rig-scoped ralph checks (gastownhall/gascity#2320) pass
-//     the city path here even though `base` may point at a rig subtree.
-//     Must be non-empty — an empty envelope would silently disable the
-//     traversal check, so it is rejected.
+//   - envelope: a security boundary for relative-path traversal. For
+//     city-scoped gates pass the city path; for rig-scoped ralph checks
+//     (gastownhall/gascity#2320) pass the city path here even though
+//     `base` may point at a rig. Must be non-empty — an empty envelope
+//     would silently disable the traversal check, so it is rejected.
 //   - base: the directory that relative conditionPath values are joined
 //     against. Pass the same value as `envelope` for callers with no
 //     rig/city distinction. When empty, falls back to `envelope` to preserve
-//     historical single-arg behavior.
+//     historical single-arg behavior. May be a sibling of envelope
+//     (gastownhall/gascity#2354) — not just a subtree.
 //   - conditionPath: the path declared by the gate. May be absolute or
 //     relative to `base`.
 //
-// Resolves relative paths against `base`, validates traversal against
-// `envelope`, resolves symlinks, and requires a regular executable file.
-// Returns the canonical absolute path.
+// Resolves relative paths against `base` and rejects them only if they
+// escape BOTH `envelope` and `base`. Both are operator-controlled trees;
+// allowing either matches the threat model (prevent paths from reaching
+// HOME or system dirs) without breaking pack-shipped scripts under a rig
+// store that is a sibling of the city. Then resolves symlinks and
+// requires a regular executable file. Returns the canonical absolute path.
 func ResolveConditionPath(envelope, base, conditionPath string) (string, error) {
 	if conditionPath == "" {
 		return "", fmt.Errorf("resolving gate condition path: empty path")
@@ -185,13 +188,26 @@ func ResolveConditionPath(envelope, base, conditionPath string) (string, error) 
 		absPath = filepath.Clean(filepath.Join(canonBase, conditionPath))
 	}
 
-	// Reject path traversal: the resolved path must be under envelope
-	// for relative paths. Absolute paths skip the containment check (they
-	// are joined against no root) — unchanged from the pre-split behavior;
-	// callers must not pass attacker-influenced absolute paths.
+	// Reject path traversal: the resolved path must be under envelope OR
+	// base for relative paths. Both are operator-controlled trees; rejecting
+	// only when the resolved path escapes BOTH preserves the threat model
+	// (block paths reaching HOME or system dirs) while supporting sibling
+	// rig layouts where the rig store is not a subtree of the city
+	// (gastownhall/gascity#2354). Absolute paths skip the containment check
+	// (they are joined against no root) — unchanged from the pre-split
+	// behavior; callers must not pass attacker-influenced absolute paths.
 	if !filepath.IsAbs(conditionPath) {
-		rel, err := filepath.Rel(canonEnvelope, absPath)
-		if err != nil || pathutil.IsOutsideDir(rel) {
+		insideEnvelope := false
+		if rel, err := filepath.Rel(canonEnvelope, absPath); err == nil && !pathutil.IsOutsideDir(rel) {
+			insideEnvelope = true
+		}
+		insideBase := false
+		if canonBase != canonEnvelope {
+			if rel, err := filepath.Rel(canonBase, absPath); err == nil && !pathutil.IsOutsideDir(rel) {
+				insideBase = true
+			}
+		}
+		if !insideEnvelope && !insideBase {
 			return "", fmt.Errorf("resolving gate condition path: path traversal not allowed: %s", conditionPath)
 		}
 	}

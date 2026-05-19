@@ -312,11 +312,12 @@ func TestResolveConditionPath(t *testing.T) {
 		testutil.AssertSamePath(t, got, script)
 	})
 
-	// Pins the security contract: when envelope and base diverge, traversal
-	// validation must use the envelope. A relative path that resolves
-	// (under the larger base) to a location outside the envelope must be
-	// rejected even though it stays inside base.
-	t.Run("rig-scoped: traversal still rejected against envelope", func(t *testing.T) {
+	// Pins the security contract: traversal that escapes BOTH envelope and
+	// base is rejected even when envelope and base diverge (subtree layout
+	// here; the sibling-layout variant is covered separately below). A path
+	// inside base satisfies the relaxed check from #2354, but here the
+	// resolved path is outside both.
+	t.Run("rig-scoped: traversal escaping both envelope and base is rejected", func(t *testing.T) {
 		cityDir := t.TempDir()
 		rigDir := filepath.Join(cityDir, "frontend")
 		if err := os.MkdirAll(rigDir, 0o755); err != nil {
@@ -331,6 +332,68 @@ func TestResolveConditionPath(t *testing.T) {
 		defer func() { _ = os.Remove(script) }()
 
 		_, err := ResolveConditionPath(cityDir, rigDir, "../../outside.sh")
+		if err == nil {
+			t.Fatal("expected traversal rejection, got nil")
+		}
+		if !strings.Contains(err.Error(), "traversal") {
+			t.Errorf("expected path traversal error, got: %v", err)
+		}
+	})
+
+	// Pins gastownhall/gascity#2354: a relative path that resolves inside
+	// base must succeed even when base is a true sibling of envelope (rig
+	// store outside the city subtree). #2328 fixed the subtree case; this
+	// pins the sibling case. The threat model is unchanged: paths must
+	// stay inside operator-controlled trees (city OR rig); paths escaping
+	// both into HOME or system dirs are still rejected.
+	t.Run("rig-scoped sibling: relative path resolves inside base outside envelope", func(t *testing.T) {
+		root := t.TempDir()
+		cityDir := filepath.Join(root, "city")
+		rigDir := filepath.Join(root, "rig")
+		if err := os.MkdirAll(cityDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// Script lives inside the rig (true sibling of city; neither is a
+		// subtree of the other).
+		scriptDir := filepath.Join(rigDir, "assets", "scripts")
+		if err := os.MkdirAll(scriptDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		script := filepath.Join(scriptDir, "check.sh")
+		if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		// envelope = cityDir, base = rigDir (sibling). Pack-shipped relative
+		// path resolves inside base; expected to succeed.
+		got, err := ResolveConditionPath(cityDir, rigDir, "assets/scripts/check.sh")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		testutil.AssertSamePath(t, got, script)
+	})
+
+	// Pins the security contract under the relaxed envelope-OR-base check:
+	// a path that escapes BOTH envelope and base must still be rejected,
+	// even in sibling layouts. Prevents formula-shipped paths from reaching
+	// HOME or system dirs.
+	t.Run("rig-scoped sibling: traversal escaping both trees still rejected", func(t *testing.T) {
+		root := t.TempDir()
+		cityDir := filepath.Join(root, "city")
+		rigDir := filepath.Join(root, "rig")
+		if err := os.MkdirAll(cityDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(rigDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// Script lives outside both envelope and base.
+		script := filepath.Join(root, "outside.sh")
+		if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+
+		_, err := ResolveConditionPath(cityDir, rigDir, "../outside.sh")
 		if err == nil {
 			t.Fatal("expected traversal rejection, got nil")
 		}
